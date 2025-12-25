@@ -54,7 +54,7 @@ export default function Sidebar({
 
   const items = useMemo(
     () => [
-      { name: "Dashboard", href: "/", icon: IconHome },
+      { name: "Dashboard", href: "/dashboard", icon: IconHome },
       { name: "Shops", href: "/shops", icon: IconStore },
       { name: "Invoices", href: "/invoices", icon: IconInvoice },
       { name: "Customers", href: "/customers", icon: IconUsers },
@@ -164,7 +164,6 @@ export default function Sidebar({
         }`}
         role="navigation"
         aria-label="Sidebar"
-        aria-expanded={!collapsedDesktop}
       >
         <div className="flex h-full flex-col p-3">
           {/* Brand collapsed indicator */}
