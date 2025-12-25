@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 /**
  * PUBLIC_INTERFACE
@@ -15,7 +16,7 @@ export default function ShopPaymentDetailError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Payment detail error:", error);
+    logger.error("Payment detail error:", error);
   }, [error]);
 
   return (
