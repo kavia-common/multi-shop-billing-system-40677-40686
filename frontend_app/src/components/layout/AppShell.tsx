@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import TopNav from "./TopNav";
 import Sidebar from "./Sidebar";
+import { ToastProvider } from "@/components/ui";
 
 /**
  * PUBLIC_INTERFACE
@@ -43,42 +44,44 @@ export default function AppShell({
   }, []);
 
   return (
-    <div className={containerClass}>
-      {/* Top Navigation */}
-      <TopNav
-        onOpenSidebar={() => setOpenMobileSidebar(true)}
-        isSidebarOpen={openMobileSidebar}
-      />
+    <ToastProvider>
+      <div className={containerClass}>
+        {/* Top Navigation */}
+        <TopNav
+          onOpenSidebar={() => setOpenMobileSidebar(true)}
+          isSidebarOpen={openMobileSidebar}
+        />
 
-      {/* Content area with a fixed header height compensation */}
-      <div className="pt-16">
-        <div className="relative flex">
-          {/* Sidebar: mobile overlay + desktop inline */}
-          <Sidebar
-            id="app-sidebar"
-            currentPath={pathname ?? "/"}
-            collapsedDesktop={collapsedDesktop}
-            openMobile={openMobileSidebar}
-            onCloseMobile={() => setOpenMobileSidebar(false)}
-            onToggleCollapse={() =>
-              setCollapsedDesktop((prev) => !prev)
-            }
-          />
+        {/* Content area with a fixed header height compensation */}
+        <div className="pt-16">
+          <div className="relative flex">
+            {/* Sidebar: mobile overlay + desktop inline */}
+            <Sidebar
+              id="app-sidebar"
+              currentPath={pathname ?? "/"}
+              collapsedDesktop={collapsedDesktop}
+              openMobile={openMobileSidebar}
+              onCloseMobile={() => setOpenMobileSidebar(false)}
+              onToggleCollapse={() =>
+                setCollapsedDesktop((prev) => !prev)
+              }
+            />
 
-          {/* Main content */}
-          <main
-            id="main-content"
-            role="main"
-            className="flex-1 p-4 lg:p-6"
-            tabIndex={-1}
-            aria-label="Main content"
-          >
-            <div className="mx-auto max-w-7xl space-y-6">
-              {children}
-            </div>
-          </main>
+            {/* Main content */}
+            <main
+              id="main-content"
+              role="main"
+              className="flex-1 p-4 lg:p-6"
+              tabIndex={-1}
+              aria-label="Main content"
+            >
+              <div className="mx-auto max-w-7xl space-y-6">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
