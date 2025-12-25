@@ -21,6 +21,7 @@ import {
 } from "@/components/ui";
 import type { Column } from "@/components/ui/Table";
 import type { Customer, Invoice, InvoiceItem, InvoiceStatus } from "@/types";
+import { createLogger } from "@/lib/logger";
 
 // Helpers
 function formatCurrency(value: number, currency = "USD") {
@@ -77,6 +78,7 @@ type CreateFormState = {
 export function InvoicesClient({ shopId }: { shopId: string }) {
   const { selectedShopId, setSelectedShopId } = useShop();
   const { show } = useToast();
+  const log = useMemo(() => createLogger("InvoicesClient"), []);
 
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -107,6 +109,8 @@ export function InvoicesClient({ shopId }: { shopId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const t0 = performance.now();
+    log.debug("load: start", { shopId });
     try {
       const [list, custs] = await Promise.all([
         apiClient.invoices.listByShop(shopId),
@@ -124,12 +128,16 @@ export function InvoicesClient({ shopId }: { shopId: string }) {
         .reduce((a, b) => Math.max(a, b), 0);
       const next = `INV-${String(maxNum + 1).padStart(4, "0")}`;
       setForm((f) => ({ ...f, id: next }));
+
+      log.debug("load: success", { count: list.length, customers: custs.length, ms: Math.round(performance.now() - t0) });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load invoices");
+      log.error("load: error", e);
     } finally {
       setLoading(false);
+      log.debug("load: finished", { ms: Math.round(performance.now() - t0) });
     }
-  }, [shopId]);
+  }, [shopId, log]);
 
   useEffect(() => {
     load();
@@ -197,6 +205,8 @@ export function InvoicesClient({ shopId }: { shopId: string }) {
     const nextErrors = validateForm(form);
     setForm((prev) => ({ ...prev, errors: nextErrors }));
     if (Object.keys(nextErrors).length > 0) {
+      const issues = Object.keys(nextErrors).length;
+      log.debug("create: validation failed", { issues });
       show({ title: "Fix the highlighted fields", variant: "error" });
       return;
     }
@@ -248,6 +258,7 @@ export function InvoicesClient({ shopId }: { shopId: string }) {
       setInvoices((prev) => prev.map((i) => (i.id === optimistic.id ? created : i)));
       setCreateOpen(false);
       show({ title: "Invoice created", variant: "success" });
+      log.debug("create: success", { id: created.id });
       // Stay on list for static export compatibility
     } catch (err: unknown) {
       // Rollback optimistic
@@ -257,6 +268,7 @@ export function InvoicesClient({ shopId }: { shopId: string }) {
         description: err instanceof Error ? err.message : "Please try again",
         variant: "error",
       });
+      log.error("create: error", err);
     } finally {
       setCreating(false);
     }

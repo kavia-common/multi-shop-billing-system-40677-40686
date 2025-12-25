@@ -22,6 +22,7 @@ import {
 import type { Column } from "@/components/ui/Table";
 import type { SelectOption } from "@/components/ui/Select";
 import type { Customer, Invoice, InvoiceStatus, Payment, PaymentMethod } from "@/types";
+import { createLogger } from "@/lib/logger";
 
 // Helpers
 function formatCurrency(value: number, currency = "USD") {
@@ -91,6 +92,7 @@ type CreateFormState = {
 export function PaymentsClient({ shopId }: { shopId: string }) {
   const { selectedShopId, setSelectedShopId } = useShop();
   const { show } = useToast();
+  const log = useMemo(() => createLogger("PaymentsClient"), []);
 
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -133,6 +135,8 @@ export function PaymentsClient({ shopId }: { shopId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const t0 = performance.now();
+    log.debug("load: start", { shopId });
     try {
       const [list, invs, custs] = await Promise.all([
         apiClient.payments.listByShop(shopId),
@@ -169,29 +173,25 @@ export function PaymentsClient({ shopId }: { shopId: string }) {
           invoiceStatus: first.status,
         }));
       }
+
+      log.debug("load: success", {
+        payments: list.length,
+        invoices: invs.length,
+        customers: custs.length,
+        ms: Math.round(performance.now() - t0),
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load payments");
+      log.error("load: error", e);
     } finally {
       setLoading(false);
+      log.debug("load: finished", { ms: Math.round(performance.now() - t0) });
     }
-  }, [shopId]);
+  }, [shopId, log]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  // react to invoice selection to update currency/status defaults
-  useEffect(() => {
-    const inv = invoices.find((i) => i.id === form.invoiceId);
-    if (inv) {
-      setForm((f) => ({
-        ...f,
-        currency: inv.currency,
-        invoiceStatus: inv.status,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.invoiceId]);
 
   const crumbs = useMemo(
     () => [
@@ -367,21 +367,6 @@ export function PaymentsClient({ shopId }: { shopId: string }) {
 
       setCreateOpen(false);
       show({ title: "Payment created", variant: "success" });
-      // Reset form but keep suggested next id
-      const maxNum = [...payments, optimistic]
-        .map((p) => {
-          const m = p.id.match(/(\d+)$/);
-          return m ? parseInt(m[1], 10) : 0;
-        })
-        .reduce((a, b) => Math.max(a, b), 0);
-      const next = `PAY-${String(maxNum + 1).padStart(4, "0")}`;
-      setForm((f) => ({
-        ...f,
-        id: next,
-        amount: "",
-        reference: "",
-        errors: {},
-      }));
     } catch (err: unknown) {
       // rollback
       setPayments((prev) => prev.filter((p) => p.id !== optimistic.id));
@@ -395,7 +380,7 @@ export function PaymentsClient({ shopId }: { shopId: string }) {
     }
   }
 
-  async function onDelete(id: string) {
+  const onDelete = useCallback(async (id: string) => {
     setDeletingId(id);
     const prev = payments;
     setPayments((cur) => cur.filter((p) => p.id !== id));
@@ -414,7 +399,7 @@ export function PaymentsClient({ shopId }: { shopId: string }) {
     } finally {
       setDeletingId(null);
     }
-  }
+  }, [payments, show]);
 
   const columns = useMemo<Column<Payment>[]>(() => {
     return [

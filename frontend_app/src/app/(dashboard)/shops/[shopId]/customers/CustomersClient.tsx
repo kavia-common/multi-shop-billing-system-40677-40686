@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import type { Column } from "@/components/ui/Table";
 import type { Customer } from "@/types";
+import { createLogger } from "@/lib/logger";
 
 type CreateFormState = {
   id: string;
@@ -32,6 +33,7 @@ type CreateFormState = {
 export function CustomersClient({ shopId }: { shopId: string }) {
   const { selectedShopId, setSelectedShopId } = useShop();
   const { show } = useToast();
+  const log = useMemo(() => createLogger("CustomersClient"), []);
 
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -62,6 +64,8 @@ export function CustomersClient({ shopId }: { shopId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const t0 = performance.now();
+    log.debug("load: start", { shopId });
     try {
       const list = await apiClient.customers.listByShop(shopId);
       setCustomers(list);
@@ -76,12 +80,16 @@ export function CustomersClient({ shopId }: { shopId: string }) {
         .filter((n) => Number.isFinite(n));
       const max = nums.reduce((a, b) => Math.max(a, b), 0);
       setForm((f) => ({ ...f, id: `${prefix}-${max + 1}` }));
+
+      log.debug("load: success", { count: list.length, ms: Math.round(performance.now() - t0) });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load customers");
+      log.error("load: error", e);
     } finally {
       setLoading(false);
+      log.debug("load: finished", { ms: Math.round(performance.now() - t0) });
     }
-  }, [shopId]);
+  }, [shopId, log]);
 
   useEffect(() => {
     load();
@@ -125,7 +133,7 @@ export function CustomersClient({ shopId }: { shopId: string }) {
     const errors: CreateFormState["errors"] = {};
     if (!f.id || f.id.trim().length === 0) errors.id = "ID is required";
     if (!f.name || f.name.trim().length === 0) errors.name = "Name is required";
-    if (f.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) errors.email = "Email is invalid";
+    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) errors.email = "Email is invalid";
     // disallow duplicate id
     if (customers.some((c) => c.id === f.id)) errors.id = "Customer ID already exists";
     return errors;

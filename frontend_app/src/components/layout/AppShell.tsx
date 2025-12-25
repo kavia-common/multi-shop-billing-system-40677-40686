@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import TopNav from "./TopNav";
 import Sidebar from "./Sidebar";
 import { ToastProvider } from "@/components/ui";
+import { createLogger } from "@/lib/logger";
 
 /**
  * PUBLIC_INTERFACE
@@ -25,6 +26,7 @@ export default function AppShell({
   const [collapsedDesktop, setCollapsedDesktop] = useState(false);
 
   const pathname = usePathname();
+  const log = useMemo(() => createLogger("AppShell"), []);
 
   // Prevent body scroll when the mobile sidebar is open
   useEffect(() => {
@@ -36,6 +38,16 @@ export default function AppShell({
       };
     }
   }, [openMobileSidebar]);
+
+  // Log initial mount in debug level
+  useEffect(() => {
+    try {
+      log.debug("AppShell mounted", { path: typeof window !== "undefined" ? window.location.pathname : pathname });
+    } catch {
+      // no-op
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Compute main container padding-left dynamically for large screens only when we choose fixed sidebars
   // We are using a flex layout, so no explicit margin is required here. This is reserved for future tweaks.

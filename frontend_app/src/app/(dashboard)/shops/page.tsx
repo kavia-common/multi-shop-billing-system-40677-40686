@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { Breadcrumbs, Button, Card, CardContent, CardHeader, CardTitle, Table, useToast } from "@/components/ui";
 import type { Column } from "@/components/ui/Table";
 import { useShop } from "@/contexts/ShopContext";
+import { createLogger } from "@/lib/logger";
 
 /**
  * PUBLIC_INTERFACE
@@ -21,20 +22,27 @@ export default function ShopsPage() {
   const [error, setError] = useState<string | null>(null);
   const { selectedShopId, setSelectedShopId } = useShop();
   const { show } = useToast();
+  const log = useMemo(() => createLogger("ShopsPage"), []);
 
   const fetchShops = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const t0 = performance.now();
+    log.debug("fetchShops: start");
     try {
       const data = await apiClient.shops.list();
       setShops(data);
+      log.debug("fetchShops: success", { count: data.length, ms: Math.round(performance.now() - t0) });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load shops.";
       setError(msg);
+      // Emit as error so it is visible regardless of log level (unless silent)
+      log.error("fetchShops: error", e);
     } finally {
       setLoading(false);
+      log.debug("fetchShops: finished", { ms: Math.round(performance.now() - t0) });
     }
-  }, []);
+  }, [log]);
 
   useEffect(() => {
     fetchShops();
